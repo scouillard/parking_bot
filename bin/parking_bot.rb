@@ -25,14 +25,9 @@ scheduler = Rufus::Scheduler.new(tz: "America/New_York")
 puts "Lauching CarletonU Parking Bot..."
 
 dates.each do |ts|
-  parsed_time = Time.parse(ts)
-  if parsed_time > Time.now
-    scheduler.at(parsed_time) do
-      registrar = PlateRegistrar.new(plates)
-      registrar.register_all_plates
-    end
-  else
-    puts "Skipping past date: #{ts}"
+  scheduler.at Time.parse(ts) do
+    registrar = PlateRegistrar.new(plates)
+    registrar.register_all_plates
   end
 end
 
