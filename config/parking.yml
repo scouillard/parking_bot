@@ -1,0 +1,4 @@
+tap_token: "CarletonTemp112"
+discount_code_id: 769  # TODO: update to numeric ID for AHLS26 once confirmed on game day
+discount: 1000
+fee: NaN

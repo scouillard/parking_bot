@@ -20,13 +20,16 @@ plates = YAML.load_file(PLATES_PATH)
 DATES_PATH = File.expand_path("../../config/dates.yml", __FILE__)
 dates = YAML.load_file(DATES_PATH)
 
+PARKING_PATH = File.expand_path("../../config/parking.yml", __FILE__)
+parking_config = YAML.load_file(PARKING_PATH)
+
 scheduler = Rufus::Scheduler.new(tz: "America/New_York")
 
 puts "Lauching CarletonU Parking Bot..."
 
 dates.each do |ts|
   scheduler.at Time.parse(ts) do
-    registrar = PlateRegistrar.new(plates)
+    registrar = PlateRegistrar.new(plates, parking_config)
     registrar.register_all_plates
   end
 end

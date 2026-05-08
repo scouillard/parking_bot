@@ -3,8 +3,9 @@ require_relative "utils"
 class PlateRegistrar
   include Utils
 
-  def initialize(plates)
+  def initialize(plates, config)
     @plates = plates
+    @config = config
   end
 
   def register_all_plates
@@ -24,7 +25,7 @@ class PlateRegistrar
   private
 
   def register_plate(entry)
-    uri = URI.parse("https://hotspotparking.com/tapPoster/startParkingSession?tapToken=CarletonTemp111&plate=#{entry["plate"]}&time=3&discount=1000&discountCodeID=769&fee=NaN")
+    uri = URI.parse("https://hotspotparking.com/tapPoster/startParkingSession?tapToken=#{@config["tap_token"]}&plate=#{entry["plate"]}&time=3&discount=#{@config["discount"]}&discountCodeID=#{@config["discount_code_id"]}&fee=#{@config["fee"]}")
     response = send_get_request(uri)
 
     if response.is_a?(Net::HTTPRedirection)

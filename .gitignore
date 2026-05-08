@@ -1,2 +1,3 @@
-/config/*.yml
+/config/plates.yml
+/config/dates.yml
 /log/*.log
