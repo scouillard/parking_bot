@@ -17,6 +17,17 @@ module Env
     self[key] || abort("Missing #{key} in #{PATH} (see .env.example).")
   end
 
+  # Sets keys in .env, keeping every other line (and the file's 600 mode).
+  def write(updates)
+    lines = File.exist?(PATH) ? File.readlines(PATH, chomp: true) : []
+    updates.each do |key, value|
+      index = lines.index { |line| line.split("=", 2).first.strip == key }
+      index ? lines[index] = "#{key}=#{value}" : lines << "#{key}=#{value}"
+    end
+    File.write(PATH, lines.join("\n") + "\n", perm: 0o600)
+    @values = nil
+  end
+
   def read
     return {} unless File.exist?(PATH)
 

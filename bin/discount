@@ -1,0 +1,53 @@
+#!/usr/bin/env ruby
+# Set or check this season's discount code. Run it once when the league gives
+# you a new code; the bot itself never looks codes up.
+#
+#   bin/discount            show the code and ID in .env, and check them on the poster page
+#   bin/discount ABCD26     look up the code's ID, save both to .env, restart the bot
+#
+# Only says whether your code is listed: other groups' codes are never printed.
+
+$stdout.sync = true
+
+require_relative "../lib/cli"
+require_relative "../lib/discount"
+
+CLI.forward_to_server!("discount")
+
+code = Env["PARKING_DISCOUNT_CODE"]
+id = Env["PARKING_DISCOUNT_CODE_ID"]
+
+if ARGV.empty?
+  puts "Discount code: #{code || "(not set)"}, ID #{id || "(not set)"}"
+  CLI.fail! "Set the code with: bin/discount <code>" unless code
+
+  begin
+    found = Discount.lookup(code)
+  rescue => e
+    CLI.fail! "Couldn't check the poster page: #{e.message}."
+  end
+
+  if found.nil?
+    CLI.fail! "#{code} isn't on the poster page any more: registrations will fail. Get the new code and run bin/discount <code>."
+  elsif found != id
+    CLI.fail! "#{code} now has ID #{found}, but .env has #{id || "none"}. Run bin/discount #{code} to fix it."
+  else
+    CLI.ok "#{code} is valid on the poster page (ID #{found})."
+  end
+else
+  new_code = ARGV[0].strip.upcase
+  begin
+    found = Discount.lookup(new_code)
+  rescue => e
+    CLI.fail! "Couldn't check the poster page: #{e.message}. Nothing changed."
+  end
+  CLI.fail! "#{new_code} isn't a valid code on the poster page. Nothing changed." if found.nil?
+
+  if new_code == code && found == id
+    CLI.ok "#{new_code} (ID #{found}) is already set."
+  else
+    Env.write("PARKING_DISCOUNT_CODE" => new_code, "PARKING_DISCOUNT_CODE_ID" => found)
+    CLI.ok "Saved #{new_code} (ID #{found}) to .env#{" (was ID #{id})" if id && id != found}."
+    CLI.restart_bot
+  end
+end

@@ -46,6 +46,10 @@ if File.exist?(SYNC_LOG_PATH)
   end
 end
 
+# Discount code from .env (bin/discount checks it on the poster page)
+code, id = Env["PARKING_DISCOUNT_CODE"], Env["PARKING_DISCOUNT_CODE_ID"]
+puts "Code:  #{code || "(code not set)"}, ID #{id || "(not set)"}  (check with bin/discount)"
+
 # Upcoming parking times, with the game each one is for
 dates = File.exist?(DATES_PATH) ? (YAML.load_file(DATES_PATH) || []).map { |ts| Time.strptime(ts, "%Y-%m-%d %H:%M") } : []
 upcoming = dates.select { |t| t > Time.now }.sort

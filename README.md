@@ -17,14 +17,38 @@ All three copies are gitignored. The bot won't start until all of them exist and
 ### `.env`
 
 ```bash
-PARKING_TAP_TOKEN=...          # the parking poster's tap token
-PARKING_DISCOUNT_CODE_ID=...   # numeric ID of the discount code
+PARKING_TAP_TOKEN=...          # the parking poster's tap token (see below)
+PARKING_DISCOUNT_CODE=...      # this season's discount code from the league (see below)
+PARKING_DISCOUNT_CODE_ID=...   # its numeric ID: filled in by `bin/discount <code>`
 SCHEDULE_TEAM_ID=...           # team_id= in the team's hockeyshift schedule URL (stays the same across divisions)
 SCHEDULE_CLIENT_SERVICE_ID=... # the league site's ID (client_service_id in the site's page config)
 PARKING_MINUTES_BEFORE=30      # optional, default 30
 ```
 
 On a laptop you can also set `PARKING_BOT_SSH` (see [Running from a laptop](#running-from-a-laptop)). Never set it on the server.
+
+### Where the parking values come from
+
+Registering a plate is the same request the parking poster's web form sends, with the discount covering the whole cost.
+
+- **Tap token** (`PARKING_TAP_TOKEN`): the last part of the poster's page, `https://hotspotparking.com/tapPoster/park/<tap token>`, which the NFC tag or QR code on the parking poster opens. It has changed between seasons (it ends in a number that goes up), so check the poster if registrations start failing.
+- **Discount code ID** (`PARKING_DISCOUNT_CODE_ID`): the league hands out a discount code each season, letters plus the year (e.g. `ABCD26`). The form never sends the code itself, only its numeric ID. The poster page embeds every valid code and its ID in its JavaScript:
+
+  ```js
+  let discountCodes = {"1234":"ABCD26","1235":"EFGH26"};
+  ```
+
+  When you type a code, the form looks up its ID there. `bin/discount` does the same lookup, once, when you set a new code:
+
+  ```bash
+  bin/discount ABCD26    # find the code's ID on the poster page, save both to .env, restart the bot
+  bin/discount           # check that the code in .env is still listed with the same ID
+  ```
+
+  The bot itself never looks codes up; it sends the saved ID. The ID changes whenever the code does (each season), and the old one stops working, so **run `bin/discount <new code>` at the start of each season**. Codes are case-insensitive. `bin/discount` only says whether your code is listed: the page lists other groups' codes too, and those aren't ours to use.
+- **Fixed parameters** (`lib/plate_registrar.rb`): `time=3` (hours), `discount=1000` and `fee=NaN`. The form gets the discount from `/TapPoster/dropdownRate` (hours, tap token, discount code ID, plate) and sends the usage fee from a field that's empty, which `parseInt` turns into `NaN`. If the site changes its rates and registrations fail, compare what the form sends (browser dev tools, Network tab, `startParkingSession`) with these.
+
+After registering, the site redirects to `/purchase_success/<reference>`. The bot then sends the confirmation email with the form's CSRF token (`/tapPoster/sendReceipt`).
 
 ### `config/plates.yml`
 
@@ -54,7 +78,7 @@ Dates already past when the bot starts are skipped, never run late. With the dai
 bin/status
 ```
 
-Shows whether the bot is running, when the schedule sync last ran (and what it changed) and runs next, every upcoming parking time with its game, and the plates. It changes nothing.
+Shows whether the bot is running, when the schedule sync last ran (and what it changed) and runs next, the discount code and ID in `.env`, every upcoming parking time with its game, and the plates. It changes nothing.
 
 ## Editing dates and plates
 
@@ -107,7 +131,7 @@ From a laptop, prefix any of them with SSH: `ssh root@your-server 'systemctl res
 
 ## Running from a laptop
 
-Set `PARKING_BOT_SSH` in your laptop's `.env` to the server's SSH login, e.g. `root@your-server`. The same `bin/status`, `bin/dates` and `bin/plates` commands then run on the server over SSH, with your normal SSH key. `PARKING_BOT_DIR` (default `parking_bot`, relative to the SSH user's home) and `PARKING_BOT_SSH_KEY` are optional.
+Set `PARKING_BOT_SSH` in your laptop's `.env` to the server's SSH login, e.g. `root@your-server`. The same `bin/status`, `bin/dates`, `bin/plates` and `bin/discount` commands then run on the server over SSH, with your normal SSH key. `PARKING_BOT_DIR` (default `parking_bot`, relative to the SSH user's home) and `PARKING_BOT_SSH_KEY` are optional.
 
 ## Server
 
