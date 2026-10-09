@@ -1,0 +1,7 @@
+# Copy to config/plates.yml (gitignored). One entry per car: the plate as it
+# appears on the car (letters and digits, no spaces) and the email that gets
+# the parking confirmation.
+- plate: "ABC123"
+  email: "friend@example.com"
+- plate: "XYZ789"
+  email: "other@example.com"

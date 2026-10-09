@@ -1,0 +1,4 @@
+# Copy to config/dates.yml (gitignored). One quoted "YYYY-MM-DD HH:MM" per
+# registration, in Eastern time. Every plate is registered at each one.
+- "2026-10-14 21:00"
+- "2026-10-21 19:00"
