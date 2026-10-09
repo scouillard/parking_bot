@@ -23,8 +23,6 @@ require 'time'
 require_relative "../lib/cli"
 require_relative "../lib/schedule"
 
-CLI.forward_to_server!("dates")
-
 DATES_PATH = File.join(CLI::CONFIG_DIR, "dates.yml")
 STORED_FORMAT = "%Y-%m-%d %H:%M"
 INPUT_FORMAT = "%d.%m.%Y %H:%M"

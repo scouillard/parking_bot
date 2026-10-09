@@ -12,8 +12,6 @@ $stdout.sync = true
 require_relative "../lib/cli"
 require_relative "../lib/discount"
 
-CLI.forward_to_server!("discount")
-
 code = Env["PARKING_DISCOUNT_CODE"]
 id = Env["PARKING_DISCOUNT_CODE_ID"]
 

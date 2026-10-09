@@ -12,8 +12,6 @@ require 'time'
 require_relative "../lib/cli"
 require_relative "../lib/schedule"
 
-CLI.forward_to_server!("status")
-
 DATES_PATH = File.join(CLI::CONFIG_DIR, "dates.yml")
 PLATES_PATH = File.join(CLI::CONFIG_DIR, "plates.yml")
 SYNC_LOG_PATH = File.expand_path("../log/sync.log", __dir__)

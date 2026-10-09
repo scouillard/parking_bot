@@ -25,8 +25,6 @@ SCHEDULE_CLIENT_SERVICE_ID=... # the league site's ID (client_service_id in the 
 PARKING_MINUTES_BEFORE=30      # optional, default 30
 ```
 
-On a laptop you can also set `PARKING_BOT_SSH` (see [Running from a laptop](#running-from-a-laptop)). Never set it on the server.
-
 ### Where the parking values come from
 
 - **Tap token** (`PARKING_TAP_TOKEN`): the last part of the link the parking poster's NFC tag or QR code opens. It can change between seasons, so check the poster if registrations start failing.
@@ -68,7 +66,7 @@ Dates already past when the bot starts are skipped, never run late. With the dai
 bin/status
 ```
 
-Shows whether the bot is running, when the schedule sync last ran (and what it changed) and runs next, the discount code and ID in `.env`, every upcoming parking time with its game, and the plates. It changes nothing.
+From a laptop: `bin/remote status`. Shows whether the bot is running, when the schedule sync last ran (and what it changed) and runs next, the discount code and ID in `.env`, every upcoming parking time with its game, and the plates. It changes nothing.
 
 ## Editing dates and plates
 
@@ -117,11 +115,28 @@ tail -f parking_bot.log                # watch the bot's output (Ctrl-C to quit)
 tail log/sync.log                      # recent syncs
 ```
 
-From a laptop, prefix any of them with SSH: `ssh root@your-server 'systemctl restart parking_bot'`. `bin/dates` and `bin/plates` already restart the bot themselves.
+From a laptop, run them through SSH, e.g. `ssh root@your-server 'systemctl restart parking_bot'`. `bin/dates`, `bin/plates` and `bin/discount` already restart the bot themselves.
 
 ## Running from a laptop
 
-Set `PARKING_BOT_SSH` in your laptop's `.env` to the server's SSH login, e.g. `root@your-server`. The same `bin/status`, `bin/dates`, `bin/plates` and `bin/discount` commands then run on the server over SSH, with your normal SSH key. `PARKING_BOT_DIR` (default `parking_bot`, relative to the SSH user's home) and `PARKING_BOT_SSH_KEY` are optional.
+`.env` and the `config/` files live on the server, and the scripts always work on the files next to them. From a laptop, put `bin/remote` in front of any of them to run it on the server over SSH:
+
+```bash
+bin/remote status
+bin/remote dates new "28.10.2026 20:00" "04.11.2026 19:30"
+bin/remote plates remove ABC123
+bin/remote discount ABCD26
+```
+
+Tell it the server's SSH login once, in the gitignored `.remote` file:
+
+```bash
+echo root@your-server > .remote
+```
+
+It uses your normal SSH key and reuses one connection for 5 minutes, in case the server rate-limits SSH. `PARKING_BOT_SSH` overrides `.remote`, and `PARKING_BOT_DIR` sets the bot's folder on the server (default `parking_bot`, relative to the SSH user's home). The laptop needs no `.env`.
+
+Run on a laptop without `remote`, the scripts only change that laptop's copies and say so.
 
 ## Server
 

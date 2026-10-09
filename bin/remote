@@ -1,0 +1,35 @@
+#!/usr/bin/env ruby
+# Run one of the bot's commands on the server, from your laptop:
+#
+#   bin/remote status
+#   bin/remote dates new "28.10.2026 20:00"
+#   bin/remote plates remove ABC123
+#   bin/remote discount ABCD26
+#
+# The server's SSH login is the one line in .remote (gitignored), e.g.
+# `root@your-server`, or PARKING_BOT_SSH. PARKING_BOT_DIR is the bot's folder
+# on the server (default parking_bot, relative to the SSH user's home).
+
+require 'shellwords'
+
+COMMANDS = %w[status dates plates discount].freeze
+REMOTE_PATH = File.expand_path("../.remote", __dir__)
+
+host = ENV["PARKING_BOT_SSH"] || (File.read(REMOTE_PATH).strip if File.exist?(REMOTE_PATH))
+dir = ENV["PARKING_BOT_DIR"] || "parking_bot"
+command, *args = ARGV
+
+if host.nil? || host.empty?
+  warn "No server set: put its SSH login in #{REMOTE_PATH}, e.g. `echo root@your-server > .remote`."
+  exit 1
+end
+
+unless COMMANDS.include?(command)
+  warn "Usage: bin/remote <#{COMMANDS.join("|")}> [arguments], e.g. bin/remote dates new \"28.10.2026 20:00\""
+  exit 1
+end
+
+# Reuse one connection for 5 minutes: the server may rate-limit new SSH connections.
+ssh_options = %W[-o ControlMaster=auto -o ControlPath=/tmp/parking-bot-ssh-%r@%h:%p -o ControlPersist=5m]
+
+exec("ssh", *ssh_options, host, "cd #{dir.shellescape} && bin/#{command} #{args.shelljoin}")
