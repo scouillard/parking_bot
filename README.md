@@ -19,7 +19,7 @@ All three copies are gitignored. The bot won't start until all of them exist and
 ```bash
 PARKING_TAP_TOKEN=...          # the parking poster's tap token (see below)
 PARKING_DISCOUNT_CODE=...      # this season's discount code from the league (see below)
-PARKING_DISCOUNT_CODE_ID=...   # its numeric ID: filled in by `bin/discount <code>`
+PARKING_DISCOUNT_CODE_ID=...   # its numeric ID: filled in by `bin/remote discount <code>`
 SCHEDULE_TEAM_ID=...           # team_id= in the team's hockeyshift schedule URL (stays the same across divisions)
 SCHEDULE_CLIENT_SERVICE_ID=... # the league site's ID (client_service_id in the site's page config)
 PARKING_MINUTES_BEFORE=30      # optional, default 30
@@ -30,17 +30,17 @@ PARKING_MINUTES_BEFORE=30      # optional, default 30
 - **Tap token** (`PARKING_TAP_TOKEN`): the last part of the link the parking poster's NFC tag or QR code opens. It can change between seasons, so check the poster if registrations start failing, then set it:
 
   ```bash
-  bin/token NEWTOKEN    # check the new poster exists, save the token, re-check the discount code, restart the bot
-  bin/token             # check that the saved token's poster still loads
+  bin/remote token NEWTOKEN    # check the new poster exists, save the token, re-check the discount code, restart the bot
+  bin/remote token             # check that the saved token's poster still loads
   ```
-- **Discount code** (`PARKING_DISCOUNT_CODE`): the league hands one out each season. The parking form works with the code's numeric ID, so `bin/discount` finds it for you:
+- **Discount code** (`PARKING_DISCOUNT_CODE`): the league hands one out each season. The parking form works with the code's numeric ID, so `bin/remote discount` finds it for you:
 
   ```bash
-  bin/discount ABCD26    # find the code's ID, save both to .env, restart the bot
-  bin/discount           # check that the saved code still works
+  bin/remote discount ABCD26    # find the code's ID, save both to .env, restart the bot
+  bin/remote discount           # check that the saved code still works
   ```
 
-  **Run `bin/discount <new code>` at the start of each season.** The old ID stops working when the code changes.
+  **Run `bin/remote discount <new code>` at the start of each season.** The old ID stops working when the code changes.
 - **Fixed parameters** (`lib/plate_registrar.rb`): the parking time and the values the form sends with each registration. If the site changes and registrations fail, compare them with what the form sends (browser dev tools, Network tab).
 
 ### `config/plates.yml`
@@ -67,38 +67,38 @@ Dates already past when the bot starts are skipped, never run late. With the dai
 
 ## Commands
 
-Everything is a command, run on the server. **From a laptop, put `bin/remote` in front**, e.g. `bin/remote status` (see [Running from a laptop](#running-from-a-laptop)).
+Everything is a command. From your laptop, `bin/remote` runs it on the server (set up in [Running from a laptop](#running-from-a-laptop)). On the server itself, drop `remote`: `bin/status`, `bin/dates`, and so on.
 
 ```bash
-bin/status                                             # overview: bot, sync, code, upcoming parking, plates (changes nothing)
+bin/remote status                                      # overview: bot, sync, code, upcoming parking, plates (changes nothing)
 
-bin/dates                                              # list upcoming dates
-bin/dates new "14.10.2026 21:00" "21.10.2026 19:00"    # add dates (day.month.year hour:minute, Eastern)
-bin/dates remove "14.10.2026 21:00"                    # remove dates
-bin/dates sync                                         # match the team schedule now (runs daily anyway)
+bin/remote dates                                       # list upcoming dates
+bin/remote dates new "14.10.2026 21:00" "21.10.2026 19:00"  # add dates (day.month.year hour:minute, Eastern)
+bin/remote dates remove "14.10.2026 21:00"             # remove dates
+bin/remote dates sync                                  # match the team schedule now (runs daily anyway)
 
-bin/plates                                             # list plates
-bin/plates new ABC123 friend@example.com               # add plates, or change a plate's email
-bin/plates new ABC123 a@example.com XYZ789 b@example.com
-bin/plates remove ABC123 XYZ789                        # remove plates
+bin/remote plates                                      # list plates
+bin/remote plates new ABC123 friend@example.com        # add plates, or change a plate's email
+bin/remote plates new ABC123 a@example.com XYZ789 b@example.com
+bin/remote plates remove ABC123 XYZ789                 # remove plates
 
-bin/discount                                           # check the saved discount code still works
-bin/discount ABCD26                                    # set this season's code (finds its ID)
+bin/remote discount                                    # check the saved discount code still works
+bin/remote discount ABCD26                             # set this season's code (finds its ID)
 
-bin/token                                              # check the saved tap token's poster still loads
-bin/token NEWTOKEN                                     # set a new tap token (re-checks the discount code)
+bin/remote token                                       # check the saved tap token's poster still loads
+bin/remote token NEWTOKEN                              # set a new tap token (re-checks the discount code)
 ```
 
 - Each command checks everything before saving: if one value is invalid, it stops and nothing changes. A date that's already scheduled, or a plate that isn't in the list, is noted and skipped.
 - After a change, it restarts the bot once so it reloads its config. Nothing changed, no restart.
 - Dates added by hand are replaced at the next daily sync unless they match a game (see [Team schedule sync](#team-schedule-sync)).
-- Editing `.env` or the YAML files by hand works too, but only takes effect after `systemctl restart parking_bot`.
+- Editing `.env` or the YAML files by hand works too, but only takes effect after a restart (see below).
 
-**Start of a season:** `bin/token NEWTOKEN` if the poster changed, then `bin/discount NEWCODE`, then `bin/status`.
+**Start of a season:** `bin/remote token NEWTOKEN` if the poster changed, then `bin/remote discount NEWCODE`, then `bin/remote status`.
 
 ## Team schedule sync
 
-`bin/dates sync` reads the team's public calendar feed (the league's "subscribe to calendar" link) and makes `config/dates.yml` exactly the upcoming games, `PARKING_MINUTES_BEFORE` before each start:
+`bin/remote dates sync` (or `bin/dates sync` on the server) reads the team's public calendar feed (the league's "subscribe to calendar" link) and makes `config/dates.yml` exactly the upcoming games, `PARKING_MINUTES_BEFORE` before each start:
 
 - new games are added;
 - past dates, and dates whose game was moved or cancelled, are removed, and so is any date added by hand that isn't a game;
