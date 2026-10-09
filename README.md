@@ -29,26 +29,16 @@ On a laptop you can also set `PARKING_BOT_SSH` (see [Running from a laptop](#run
 
 ### Where the parking values come from
 
-Registering a plate is the same request the parking poster's web form sends, with the discount covering the whole cost.
-
-- **Tap token** (`PARKING_TAP_TOKEN`): the last part of the poster's page, `https://hotspotparking.com/tapPoster/park/<tap token>`, which the NFC tag or QR code on the parking poster opens. It has changed between seasons (it ends in a number that goes up), so check the poster if registrations start failing.
-- **Discount code ID** (`PARKING_DISCOUNT_CODE_ID`): the league hands out a discount code each season, letters plus the year (e.g. `ABCD26`). The form never sends the code itself, only its numeric ID. The poster page embeds every valid code and its ID in its JavaScript:
-
-  ```js
-  let discountCodes = {"1234":"ABCD26","1235":"EFGH26"};
-  ```
-
-  When you type a code, the form looks up its ID there. `bin/discount` does the same lookup, once, when you set a new code:
+- **Tap token** (`PARKING_TAP_TOKEN`): the last part of the link the parking poster's NFC tag or QR code opens. It can change between seasons, so check the poster if registrations start failing.
+- **Discount code** (`PARKING_DISCOUNT_CODE`): the league hands one out each season. The parking form works with the code's numeric ID, so `bin/discount` finds it for you:
 
   ```bash
-  bin/discount ABCD26    # find the code's ID on the poster page, save both to .env, restart the bot
-  bin/discount           # check that the code in .env is still listed with the same ID
+  bin/discount ABCD26    # find the code's ID, save both to .env, restart the bot
+  bin/discount           # check that the saved code still works
   ```
 
-  The bot itself never looks codes up; it sends the saved ID. The ID changes whenever the code does (each season), and the old one stops working, so **run `bin/discount <new code>` at the start of each season**. Codes are case-insensitive. `bin/discount` only says whether your code is listed: the page lists other groups' codes too, and those aren't ours to use.
-- **Fixed parameters** (`lib/plate_registrar.rb`): `time=3` (hours), `discount=1000` and `fee=NaN`. The form gets the discount from `/TapPoster/dropdownRate` (hours, tap token, discount code ID, plate) and sends the usage fee from a field that's empty, which `parseInt` turns into `NaN`. If the site changes its rates and registrations fail, compare what the form sends (browser dev tools, Network tab, `startParkingSession`) with these.
-
-After registering, the site redirects to `/purchase_success/<reference>`. The bot then sends the confirmation email with the form's CSRF token (`/tapPoster/sendReceipt`).
+  **Run `bin/discount <new code>` at the start of each season.** The old ID stops working when the code changes.
+- **Fixed parameters** (`lib/plate_registrar.rb`): the parking time and the values the form sends with each registration. If the site changes and registrations fail, compare them with what the form sends (browser dev tools, Network tab).
 
 ### `config/plates.yml`
 
