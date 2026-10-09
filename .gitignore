@@ -2,3 +2,4 @@
 /config/dates.yml
 /log/*.log
 /parking_bot.log
+/.env

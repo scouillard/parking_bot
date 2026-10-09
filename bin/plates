@@ -11,6 +11,8 @@
 require 'yaml'
 require_relative "../lib/cli"
 
+CLI.forward_to_server!("plates")
+
 PLATES_PATH = File.join(CLI::CONFIG_DIR, "plates.yml")
 
 def load_plates

@@ -15,3 +15,7 @@ bin/plates remove ABC123 XYZ789                        # remove plates
 ```
 
 Each change is checked in full before anything is saved, drops past dates, and restarts the service once so the bot picks it up.
+
+## Running them from your laptop
+
+Copy `.env.example` to `.env` (gitignored) and set `PARKING_BOT_SSH` to the server's SSH login. The same `bin/dates` and `bin/plates` commands then run on the server over SSH, using your normal SSH key. Don't create `.env` on the server.
