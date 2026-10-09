@@ -89,6 +89,26 @@ If one value is invalid, the whole command stops and nothing is saved. A date th
 
 The `parking_bot-sync.timer` runs it every day at 06:00 Eastern, early enough that a restart can't interrupt an evening registration. Its output goes to `log/sync.log`.
 
+## Starting, stopping and restarting the bot
+
+The bot reads `.env` and the `config/` files only when it starts, so **after editing any of them by hand, restart it**. On the server:
+
+```bash
+systemctl restart parking_bot          # after a manual change: reload the config
+systemctl start parking_bot            # start it if it's stopped
+systemctl stop parking_bot             # stop it
+systemctl status parking_bot           # is it running? (q to quit)
+
+systemctl start parking_bot-sync       # run the schedule sync now (same as bin/dates sync)
+systemctl stop parking_bot-sync.timer  # pause the daily sync, e.g. to keep manual dates
+systemctl start parking_bot-sync.timer # resume it
+
+tail -f parking_bot.log                # watch the bot's output (Ctrl-C to quit)
+tail log/sync.log                      # recent syncs
+```
+
+From a laptop, prefix any of them with SSH: `ssh root@your-server 'systemctl restart parking_bot'`. `bin/dates` and `bin/plates` already restart the bot themselves.
+
 ## Running from a laptop
 
 Set `PARKING_BOT_SSH` in your laptop's `.env` to the server's SSH login, e.g. `root@your-server`. The same `bin/status`, `bin/dates` and `bin/plates` commands then run on the server over SSH, with your normal SSH key. `PARKING_BOT_DIR` (default `parking_bot`, relative to the SSH user's home) and `PARKING_BOT_SSH_KEY` are optional.
