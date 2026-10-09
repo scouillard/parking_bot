@@ -1,0 +1,90 @@
+#!/usr/bin/env ruby
+# Manage the registration dates in config/dates.yml (Eastern time).
+#
+#   bin/dates                                                list upcoming dates
+#   bin/dates new "14.10.2026 21:00" "21.10.2026 19:00"      add one or more dates
+#   bin/dates remove "14.10.2026 21:00" "21.10.2026 19:00"   remove one or more dates
+#
+# A malformed or past date aborts the whole command, so nothing is half-saved.
+# Past dates are dropped on every change, and the bot is restarted once.
+
+# Same zone as the bot (see Environment=TZ in parking_bot.service).
+ENV["TZ"] = "America/New_York"
+
+require 'yaml'
+require 'time'
+require_relative "../lib/cli"
+
+DATES_PATH = File.join(CLI::CONFIG_DIR, "dates.yml")
+STORED_FORMAT = "%Y-%m-%d %H:%M"
+INPUT_FORMAT = "%d.%m.%Y %H:%M"
+
+def load_dates
+  return [] unless File.exist?(DATES_PATH)
+
+  (YAML.load_file(DATES_PATH) || []).map { |ts| Time.strptime(ts, STORED_FORMAT) }
+end
+
+def save_dates(dates)
+  upcoming = dates.uniq.select { |t| t > Time.now }.sort
+  File.write(DATES_PATH, upcoming.map { |t| %(- "#{t.strftime(STORED_FORMAT)}"\n) }.join)
+  upcoming
+end
+
+def parse_inputs(args)
+  CLI.fail! "Give at least one date as \"day.month.year hour:minute\", e.g. \"14.10.2026 21:00\"." if args.empty?
+
+  args.map do |arg|
+    Time.strptime(arg.strip, INPUT_FORMAT)
+  rescue ArgumentError
+    CLI.fail! "Can't read #{arg.inspect}: use \"day.month.year hour:minute\", e.g. \"14.10.2026 21:00\". Nothing changed."
+  end.uniq
+end
+
+def show(time)
+  time.strftime("%a %d.%m.%Y %H:%M")
+end
+
+def list(dates)
+  upcoming = dates.select { |t| t > Time.now }.sort
+  if upcoming.empty?
+    puts "No upcoming dates."
+  else
+    puts "Upcoming dates (Eastern time):"
+    upcoming.each { |t| puts "  #{show(t)}" }
+  end
+end
+
+dates = load_dates
+
+case ARGV[0]
+when nil, "list"
+  list(dates)
+when "new", "add"
+  times = parse_inputs(ARGV[1..])
+  past = times.select { |t| t <= Time.now }
+  CLI.fail! "In the past: #{past.map { |t| show(t) }.join(", ")}. Nothing changed." if past.any?
+
+  known, added = times.partition { |t| dates.include?(t) }
+  known.each { |t| puts "Already scheduled: #{show(t)}" }
+  if added.empty?
+    puts "Nothing to add."
+  else
+    list(save_dates(dates + added))
+    added.sort.each { |t| CLI.ok "Added #{show(t)}." }
+    CLI.restart_bot
+  end
+when "remove", "rm"
+  times = parse_inputs(ARGV[1..])
+  removed, unknown = times.partition { |t| dates.include?(t) }
+  unknown.each { |t| puts "Not scheduled: #{show(t)}" }
+  if removed.empty?
+    puts "Nothing to remove."
+  else
+    list(save_dates(dates - removed))
+    removed.sort.each { |t| CLI.ok "Removed #{show(t)}." }
+    CLI.restart_bot
+  end
+else
+  CLI.fail! "Unknown command #{ARGV[0].inspect}. Use: bin/dates [list | new \"DD.MM.YYYY HH:MM\" ... | remove \"DD.MM.YYYY HH:MM\" ...]"
+end

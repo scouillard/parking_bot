@@ -1,0 +1,90 @@
+#!/usr/bin/env ruby
+# Manage the plates in config/plates.yml.
+#
+#   bin/plates                                                        list plates
+#   bin/plates new ABC123 friend@example.com XYZ789 other@example.com add plates (or change their email)
+#   bin/plates remove ABC123 XYZ789                                   remove plates
+#
+# A bad plate or email aborts the whole command, so nothing is half-saved.
+# The bot is restarted once after a change.
+
+require 'yaml'
+require_relative "../lib/cli"
+
+PLATES_PATH = File.join(CLI::CONFIG_DIR, "plates.yml")
+
+def load_plates
+  return [] unless File.exist?(PLATES_PATH)
+
+  YAML.load_file(PLATES_PATH) || []
+end
+
+def save_plates(plates)
+  File.write(PLATES_PATH, plates.map { |p| %(- plate: "#{p["plate"]}"\n  email: "#{p["email"]}"\n) }.join)
+end
+
+def parse_plate(arg)
+  plate = arg.to_s.strip.upcase.delete(" -")
+  CLI.fail! "Give a plate made of letters and digits, e.g. ABC123." unless plate.match?(/\A[A-Z0-9]{2,8}\z/)
+
+  plate
+end
+
+def list(plates)
+  if plates.empty?
+    puts "No plates."
+  else
+    puts "#{plates.size} plates:"
+    plates.each_with_index { |p, i| puts format("  %2d  %-8s  %s", i + 1, p["plate"], p["email"]) }
+  end
+end
+
+plates = load_plates
+
+case ARGV[0]
+when nil, "list"
+  list(plates)
+when "new", "add"
+  args = ARGV[1..]
+  CLI.fail! "Give plate and email pairs, e.g. bin/plates new ABC123 friend@example.com XYZ789 other@example.com" if args.empty? || args.size.odd?
+
+  # Check every pair before changing anything.
+  pairs = args.each_slice(2).map do |raw_plate, raw_email|
+    plate = parse_plate(raw_plate)
+    email = raw_email.strip
+    CLI.fail! "#{raw_email.inspect} (for #{plate}) isn't an email. Nothing changed." unless email.match?(/\A[^@\s"]+@[^@\s"]+\.[^@\s"]+\z/)
+
+    [plate, email]
+  end
+
+  messages = pairs.map do |plate, email|
+    if (existing = plates.find { |p| p["plate"] == plate })
+      existing["email"] = email
+      "Changed #{plate}'s email to #{email}."
+    else
+      plates << { "plate" => plate, "email" => email }
+      "Added #{plate} (#{email})."
+    end
+  end
+  save_plates(plates)
+  list(plates)
+  messages.each { |m| CLI.ok m }
+  CLI.restart_bot
+when "remove", "rm"
+  wanted = ARGV[1..].map { |arg| parse_plate(arg) }.uniq
+  CLI.fail! "Give at least one plate, e.g. bin/plates remove ABC123 XYZ789" if wanted.empty?
+
+  removed, unknown = wanted.partition { |plate| plates.any? { |p| p["plate"] == plate } }
+  unknown.each { |plate| puts "Not in the list: #{plate}" }
+  if removed.empty?
+    puts "Nothing to remove."
+  else
+    plates.reject! { |p| removed.include?(p["plate"]) }
+    save_plates(plates)
+    list(plates)
+    removed.each { |plate| CLI.ok "Removed #{plate}." }
+    CLI.restart_bot
+  end
+else
+  CLI.fail! "Unknown command #{ARGV[0].inspect}. Use: bin/plates [list | new PLATE EMAIL ... | remove PLATE ...]"
+end
