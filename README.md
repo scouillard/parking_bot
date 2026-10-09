@@ -1,8 +1,12 @@
 # Parking bot
 
-Registers every plate in `config/plates.yml` on each date in `config/dates.yml` (Eastern time), then emails each owner a confirmation. Runs as the `parking_bot` systemd service.
+Registers every plate in `config/plates.yml` on each date in `config/dates.yml` (Eastern time), then emails each owner a confirmation. Runs as the `parking_bot` systemd service with `TZ=America/New_York`, on system Ruby with the `nokogiri` and `rufus-scheduler` gems.
 
-Both config files are gitignored. Edit them with:
+## Setup
+
+Copy `.env.example` to `.env` and set `PARKING_TAP_TOKEN` and `PARKING_DISCOUNT_CODE_ID`; the bot won't start without them. `config/parking.yml` holds the rest of the parking settings. `.env`, `config/plates.yml` and `config/dates.yml` are gitignored.
+
+## Editing dates and plates
 
 ```bash
 bin/dates                                              # list upcoming dates
@@ -18,4 +22,4 @@ Each change is checked in full before anything is saved, drops past dates, and r
 
 ## Running them from your laptop
 
-Copy `.env.example` to `.env` (gitignored) and set `PARKING_BOT_SSH` to the server's SSH login. The same `bin/dates` and `bin/plates` commands then run on the server over SSH, using your normal SSH key. Don't create `.env` on the server.
+Set `PARKING_BOT_SSH` in your laptop's `.env` to the server's SSH login. The same `bin/dates` and `bin/plates` commands then run on the server over SSH, using your normal SSH key. Never set `PARKING_BOT_SSH` in the server's `.env`.

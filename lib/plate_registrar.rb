@@ -1,3 +1,8 @@
+require 'net/http'
+require 'uri'
+require 'json'
+require 'nokogiri'
+
 require_relative "utils"
 
 class PlateRegistrar

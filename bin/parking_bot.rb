@@ -1,14 +1,10 @@
 #!/usr/bin/env ruby
 
-require 'net/http'
-require 'uri'
-require 'nokogiri'
-require 'json'
 require 'yaml'
-require 'logger'
 require 'time'
 require 'rufus-scheduler'
 
+require_relative "../lib/env"
 require_relative "../lib/plate_registrar"
 
 LOG_PATH = File.expand_path('../log/logs.log', __dir__)
@@ -21,11 +17,14 @@ DATES_PATH = File.expand_path("../../config/dates.yml", __FILE__)
 dates = YAML.load_file(DATES_PATH)
 
 PARKING_PATH = File.expand_path("../../config/parking.yml", __FILE__)
-parking_config = YAML.load_file(PARKING_PATH)
+parking_config = YAML.load_file(PARKING_PATH).merge(
+  "tap_token" => Env.fetch!("PARKING_TAP_TOKEN"),
+  "discount_code_id" => Env.fetch!("PARKING_DISCOUNT_CODE_ID")
+)
 
 scheduler = Rufus::Scheduler.new(tz: "America/New_York")
 
-puts "Lauching CarletonU Parking Bot..."
+puts "Launching CarletonU Parking Bot..."
 
 dates.each do |ts|
   scheduler.at Time.parse(ts) do

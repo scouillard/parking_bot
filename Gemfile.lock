@@ -7,7 +7,10 @@ GEM
     fugit (1.11.1)
       et-orbi (~> 1, >= 1.2.11)
       raabro (~> 1.4)
+    nokogiri (1.19.4-x86_64-linux-gnu)
+      racc (~> 1.4)
     raabro (1.4.0)
+    racc (1.8.1)
     rufus-scheduler (3.9.2)
       fugit (~> 1.1, >= 1.11.1)
     tzinfo (2.0.6)
@@ -17,7 +20,8 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
+  nokogiri
   rufus-scheduler
 
 BUNDLED WITH
-   2.2.3
+   2.7.2
