@@ -65,31 +65,36 @@ A list of quoted `"YYYY-MM-DD HH:MM"` times, in **Eastern time**. Every plate is
 
 Dates already past when the bot starts are skipped, never run late. With the daily sync on, you don't edit this file: see [Team schedule sync](#team-schedule-sync).
 
-## Checking on it
+## Commands
+
+Everything is a command, run on the server. **From a laptop, put `bin/remote` in front**, e.g. `bin/remote status` (see [Running from a laptop](#running-from-a-laptop)).
 
 ```bash
-bin/status
-```
+bin/status                                             # overview: bot, sync, code, upcoming parking, plates (changes nothing)
 
-From a laptop: `bin/remote status`. Shows whether the bot is running, when the schedule sync last ran (and what it changed) and runs next, the discount code and ID in `.env`, every upcoming parking time with its game, and the plates. It changes nothing.
-
-## Editing dates and plates
-
-Use the scripts rather than editing the YAML by hand. They check everything before saving, drop past dates, and restart the service once so the bot reloads its config. A hand edit only takes effect after `systemctl restart parking_bot`.
-
-```bash
 bin/dates                                              # list upcoming dates
 bin/dates new "14.10.2026 21:00" "21.10.2026 19:00"    # add dates (day.month.year hour:minute, Eastern)
 bin/dates remove "14.10.2026 21:00"                    # remove dates
-bin/dates sync                                         # match the team schedule now (see below)
+bin/dates sync                                         # match the team schedule now (runs daily anyway)
 
 bin/plates                                             # list plates
 bin/plates new ABC123 friend@example.com               # add plates, or change a plate's email
 bin/plates new ABC123 a@example.com XYZ789 b@example.com
 bin/plates remove ABC123 XYZ789                        # remove plates
+
+bin/discount                                           # check the saved discount code still works
+bin/discount ABCD26                                    # set this season's code (finds its ID)
+
+bin/token                                              # check the saved tap token's poster still loads
+bin/token NEWTOKEN                                     # set a new tap token (re-checks the discount code)
 ```
 
-If one value is invalid, the whole command stops and nothing is saved. A date that's already scheduled, or a plate that isn't in the list, is noted and skipped.
+- Each command checks everything before saving: if one value is invalid, it stops and nothing changes. A date that's already scheduled, or a plate that isn't in the list, is noted and skipped.
+- After a change, it restarts the bot once so it reloads its config. Nothing changed, no restart.
+- Dates added by hand are replaced at the next daily sync unless they match a game (see [Team schedule sync](#team-schedule-sync)).
+- Editing `.env` or the YAML files by hand works too, but only takes effect after `systemctl restart parking_bot`.
+
+**Start of a season:** `bin/token NEWTOKEN` if the poster changed, then `bin/discount NEWCODE`, then `bin/status`.
 
 ## Team schedule sync
 
