@@ -1,0 +1,10 @@
+[Unit]
+Description=Parking Bot: daily schedule sync
+
+[Timer]
+# Early morning, so restarting the bot can't interrupt an evening registration.
+OnCalendar=*-*-* 06:00:00 America/New_York
+Persistent=true
+
+[Install]
+WantedBy=timers.target

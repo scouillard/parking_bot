@@ -1,6 +1,6 @@
 # Parking bot
 
-Registers every plate in `config/plates.yml` on each date in `config/dates.yml`, then emails each plate's owner the parking confirmation. It runs as the `parking_bot` systemd service and waits between dates.
+Registers every plate in `config/plates.yml` on each date in `config/dates.yml`, then emails each plate's owner the parking confirmation. It runs as the `parking_bot` systemd service and waits between dates. A daily job keeps the dates in line with the team's game schedule, 30 minutes before each game.
 
 ## Setup
 
@@ -19,6 +19,9 @@ All three copies are gitignored. The bot won't start until all of them exist and
 ```bash
 PARKING_TAP_TOKEN=...          # the parking poster's tap token
 PARKING_DISCOUNT_CODE_ID=...   # numeric ID of the discount code
+SCHEDULE_TEAM_ID=...           # team_id= in the team's hockeyshift schedule URL (stays the same across divisions)
+SCHEDULE_CLIENT_SERVICE_ID=... # the league site's ID (client_service_id in the site's page config)
+PARKING_MINUTES_BEFORE=30      # optional, default 30
 ```
 
 On a laptop you can also set `PARKING_BOT_SSH` (see [Running from a laptop](#running-from-a-laptop)). Never set it on the server.
@@ -43,11 +46,19 @@ A list of quoted `"YYYY-MM-DD HH:MM"` times, in **Eastern time**. Every plate is
 - "2026-10-21 19:00"
 ```
 
-Dates already past when the bot starts are skipped, never run late.
+Dates already past when the bot starts are skipped, never run late. With the daily sync on, you don't edit this file: see [Team schedule sync](#team-schedule-sync).
 
 ### `config/parking.yml` (tracked)
 
 `discount` and `fee` are sent to the parking site as is with every registration. Change them only if the site's parameters change.
+
+## Checking on it
+
+```bash
+bin/status
+```
+
+Shows whether the bot is running, when the schedule sync last ran (and what it changed) and runs next, every upcoming parking time with its game, and the plates. It changes nothing.
 
 ## Editing dates and plates
 
@@ -57,6 +68,7 @@ Use the scripts rather than editing the YAML by hand. They check everything befo
 bin/dates                                              # list upcoming dates
 bin/dates new "14.10.2026 21:00" "21.10.2026 19:00"    # add dates (day.month.year hour:minute, Eastern)
 bin/dates remove "14.10.2026 21:00"                    # remove dates
+bin/dates sync                                         # match the team schedule now (see below)
 
 bin/plates                                             # list plates
 bin/plates new ABC123 friend@example.com               # add plates, or change a plate's email
@@ -66,35 +78,34 @@ bin/plates remove ABC123 XYZ789                        # remove plates
 
 If one value is invalid, the whole command stops and nothing is saved. A date that's already scheduled, or a plate that isn't in the list, is noted and skipped.
 
+## Team schedule sync
+
+`bin/dates sync` reads the team's public calendar feed (the league's "subscribe to calendar" link) and makes `config/dates.yml` exactly the upcoming games, `PARKING_MINUTES_BEFORE` before each start:
+
+- new games are added;
+- past dates, and dates whose game was moved or cancelled, are removed, and so is any date added by hand that isn't a game;
+- if the feed can't be read, or comes back empty or malformed, nothing changes;
+- the bot restarts only when the dates change.
+
+The `parking_bot-sync.timer` runs it every day at 06:00 Eastern, early enough that a restart can't interrupt an evening registration. Its output goes to `log/sync.log`.
+
 ## Running from a laptop
 
-Set `PARKING_BOT_SSH` in your laptop's `.env` to the server's SSH login, e.g. `root@your-server`. The same `bin/dates` and `bin/plates` commands then run on the server over SSH, with your normal SSH key. `PARKING_BOT_DIR` (default `parking_bot`, relative to the SSH user's home) and `PARKING_BOT_SSH_KEY` are optional.
+Set `PARKING_BOT_SSH` in your laptop's `.env` to the server's SSH login, e.g. `root@your-server`. The same `bin/status`, `bin/dates` and `bin/plates` commands then run on the server over SSH, with your normal SSH key. `PARKING_BOT_DIR` (default `parking_bot`, relative to the SSH user's home) and `PARKING_BOT_SSH_KEY` are optional.
 
 ## Server
 
 - Ruby with the `nokogiri` and `rufus-scheduler` gems, e.g. `apt install ruby ruby-nokogiri` and `gem install rufus-scheduler`.
-- A systemd unit at `/etc/systemd/system/parking_bot.service`:
+- The units in `systemd/` (paths assume the repo is at `/root/parking_bot`):
 
-  ```ini
-  [Unit]
-  Description=Parking Bot
-  After=network.target
-
-  [Service]
-  ExecStart=/usr/bin/ruby /root/parking_bot/bin/parking_bot.rb
-  Restart=always
-  User=root
-  WorkingDirectory=/root/parking_bot/bin
-  Environment=TZ=America/New_York
-  StandardOutput=append:/root/parking_bot/parking_bot.log
-  StandardError=append:/root/parking_bot/parking_bot.log
-
-  [Install]
-  WantedBy=multi-user.target
+  ```bash
+  cp systemd/* /etc/systemd/system/
+  systemctl daemon-reload
+  systemctl enable --now parking_bot parking_bot-sync.timer
   ```
 
-  `TZ=America/New_York` is required: the bot reads the dates in the server's time zone, so on a UTC server they'd fire hours early.
-- `systemctl daemon-reload && systemctl enable --now parking_bot`.
+  `TZ=America/New_York` in the units is required: the bot reads the dates in the server's time zone, so on a UTC server they'd fire hours early.
+- Check them with `systemctl status parking_bot` and `systemctl list-timers parking_bot-sync.timer`.
 - **Run it on one server only.** Two copies would register every plate twice and send two emails.
 
-Logs: `parking_bot.log` (service output) and `log/logs.log` (timestamped results), both gitignored.
+Logs: `parking_bot.log` (service output), `log/logs.log` (timestamped results) and `log/sync.log` (daily sync), all gitignored.

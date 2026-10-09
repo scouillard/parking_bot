@@ -4,16 +4,24 @@
 #   bin/dates                                                list upcoming dates
 #   bin/dates new "14.10.2026 21:00" "21.10.2026 19:00"      add one or more dates
 #   bin/dates remove "14.10.2026 21:00" "21.10.2026 19:00"   remove one or more dates
+#   bin/dates sync                                           match the team's game schedule
 #
 # A malformed or past date aborts the whole command, so nothing is half-saved.
 # Past dates are dropped on every change, and the bot is restarted once.
+#
+# sync makes the dates exactly the upcoming games, PARKING_MINUTES_BEFORE
+# (default 30) before each start: new games are added, and dates with no game
+# any more (moved, cancelled or added by hand) are removed. If the schedule
+# can't be read, nothing changes.
 
 # Same zone as the bot (see Environment=TZ in parking_bot.service).
 ENV["TZ"] = "America/New_York"
+$stdout.sync = true
 
 require 'yaml'
 require 'time'
 require_relative "../lib/cli"
+require_relative "../lib/schedule"
 
 CLI.forward_to_server!("dates")
 
@@ -87,6 +95,30 @@ when "remove", "rm"
     removed.sort.each { |t| CLI.ok "Removed #{show(t)}." }
     CLI.restart_bot
   end
+when "sync"
+  puts "[#{Time.now.strftime("%Y-%m-%d %H:%M %Z")}] Syncing with the team schedule..."
+  begin
+    games = Schedule.upcoming_games
+  rescue => e
+    CLI.fail! "Couldn't read the team schedule: #{e.message}. Nothing changed."
+  end
+
+  before = Schedule.minutes_before * 60
+  wanted = games.to_h { |game| [game.start - before, game] }.reject { |t, _| t <= Time.now }
+  current = dates.select { |t| t > Time.now }
+  added = wanted.keys - current
+  removed = current - wanted.keys
+
+  wanted.sort.each { |t, game| puts "  #{show(t)}  #{added.include?(t) ? "+ " : "  "}#{game.summary} at #{game.start.strftime("%H:%M")}" }
+  removed.sort.each { |t| puts "  #{show(t)}  - no game at #{(t + before).strftime("%H:%M")} any more" }
+
+  if added.empty? && removed.empty?
+    puts "Dates already match the schedule (#{wanted.size} upcoming)."
+  else
+    save_dates(wanted.keys)
+    CLI.ok "Added #{added.size}, removed #{removed.size}: #{wanted.size} upcoming."
+    CLI.restart_bot
+  end
 else
-  CLI.fail! "Unknown command #{ARGV[0].inspect}. Use: bin/dates [list | new \"DD.MM.YYYY HH:MM\" ... | remove \"DD.MM.YYYY HH:MM\" ...]"
+  CLI.fail! "Unknown command #{ARGV[0].inspect}. Use: bin/dates [list | new \"DD.MM.YYYY HH:MM\" ... | remove \"DD.MM.YYYY HH:MM\" ... | sync]"
 end

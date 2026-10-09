@@ -1,0 +1,12 @@
+[Unit]
+Description=Parking Bot: sync dates with the team schedule
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/ruby /root/parking_bot/bin/dates sync
+User=root
+Environment=TZ=America/New_York
+StandardOutput=append:/root/parking_bot/log/sync.log
+StandardError=append:/root/parking_bot/log/sync.log

@@ -1,0 +1,16 @@
+[Unit]
+Description=Parking Bot
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/ruby /root/parking_bot/bin/parking_bot.rb
+Restart=always
+User=root
+WorkingDirectory=/root/parking_bot/bin
+# The bot reads dates.yml in the server's zone: required on a UTC server.
+Environment=TZ=America/New_York
+StandardOutput=append:/root/parking_bot/parking_bot.log
+StandardError=append:/root/parking_bot/parking_bot.log
+
+[Install]
+WantedBy=multi-user.target

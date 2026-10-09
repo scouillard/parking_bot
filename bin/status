@@ -1,0 +1,79 @@
+#!/usr/bin/env ruby
+# Read-only overview: the bot, the daily sync, upcoming parking times with
+# their games, and the plates. Changes nothing.
+#
+#   bin/status
+
+# Same zone as the bot (see Environment=TZ in parking_bot.service).
+ENV["TZ"] = "America/New_York"
+
+require 'yaml'
+require 'time'
+require_relative "../lib/cli"
+require_relative "../lib/schedule"
+
+CLI.forward_to_server!("status")
+
+DATES_PATH = File.join(CLI::CONFIG_DIR, "dates.yml")
+PLATES_PATH = File.join(CLI::CONFIG_DIR, "plates.yml")
+SYNC_LOG_PATH = File.expand_path("../log/sync.log", __dir__)
+
+def systemd(*args)
+  out = IO.popen(["systemctl", *args], err: File::NULL, &:read).strip
+  out.empty? ? nil : out
+rescue Errno::ENOENT
+  nil
+end
+
+def show(time)
+  time.strftime("%a %d.%m.%Y %H:%M")
+end
+
+# Bot
+state = systemd("is-active", CLI::SERVICE) || "not installed here"
+since = systemd("show", CLI::SERVICE, "-p", "ActiveEnterTimestamp", "--value") if state == "active"
+puts "Bot:   #{state}#{" since #{since}" if since}"
+
+# Daily sync: next run from the timer, last run from its log
+next_run = systemd("show", "#{CLI::SERVICE}-sync.timer", "-p", "NextElapseUSecRealtime", "--value")
+puts "Sync:  next #{next_run || "not scheduled (timer not installed)"}"
+if File.exist?(SYNC_LOG_PATH)
+  lines = File.readlines(SYNC_LOG_PATH, chomp: true)
+  start = lines.rindex { |l| l.include?("Syncing with the team schedule") }
+  if start
+    result = lines[(start + 1)..].reverse.find { |l| l.match?(/Added|already match|Couldn't|Missing/) }
+    puts "       last #{lines[start][/\[(.*?)\]/, 1]}: #{result.to_s.gsub(/\e\[\d+m/, "").strip}"
+  end
+end
+
+# Upcoming parking times, with the game each one is for
+dates = File.exist?(DATES_PATH) ? (YAML.load_file(DATES_PATH) || []).map { |ts| Time.strptime(ts, "%Y-%m-%d %H:%M") } : []
+upcoming = dates.select { |t| t > Time.now }.sort
+before = Schedule.minutes_before * 60
+games = if Env["SCHEDULE_TEAM_ID"] && Env["SCHEDULE_CLIENT_SERVICE_ID"]
+  begin
+    Schedule.upcoming_games.to_h { |game| [game.start, game.summary] }
+  rescue => e
+    puts "       (team schedule unavailable: #{e.message})"
+    {}
+  end
+else
+  {}
+end
+
+puts
+if upcoming.empty?
+  puts "No upcoming parking."
+else
+  puts "Upcoming parking (Eastern time):"
+  upcoming.each do |t|
+    game = games[t + before]
+    puts "  #{show(t)}  #{game ? "#{game} at #{(t + before).strftime("%H:%M")}" : "(no game at #{(t + before).strftime("%H:%M")})"}"
+  end
+end
+
+# Plates
+plates = File.exist?(PLATES_PATH) ? (YAML.load_file(PLATES_PATH) || []) : []
+puts
+puts "#{plates.size} plates:"
+plates.each_with_index { |p, i| puts format("  %2d  %-8s  %s", i + 1, p["plate"], p["email"]) }
