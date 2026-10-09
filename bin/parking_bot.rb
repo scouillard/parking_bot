@@ -16,11 +16,10 @@ plates = YAML.load_file(PLATES_PATH)
 DATES_PATH = File.expand_path("../../config/dates.yml", __FILE__)
 dates = YAML.load_file(DATES_PATH)
 
-PARKING_PATH = File.expand_path("../../config/parking.yml", __FILE__)
-parking_config = YAML.load_file(PARKING_PATH).merge(
+parking_config = {
   "tap_token" => Env.fetch!("PARKING_TAP_TOKEN"),
   "discount_code_id" => Env.fetch!("PARKING_DISCOUNT_CODE_ID")
-)
+}
 
 scheduler = Rufus::Scheduler.new(tz: "America/New_York")
 

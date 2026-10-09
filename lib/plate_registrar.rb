@@ -8,6 +8,12 @@ require_relative "utils"
 class PlateRegistrar
   include Utils
 
+  # Fixed parameters the parking site expects with every registration.
+  PARKING_HOURS = 3
+  DISCOUNT = 1000
+  FEE = "NaN"
+
+  # config: "tap_token" and "discount_code_id" (from .env)
   def initialize(plates, config)
     @plates = plates
     @config = config
@@ -30,7 +36,7 @@ class PlateRegistrar
   private
 
   def register_plate(entry)
-    uri = URI.parse("https://hotspotparking.com/tapPoster/startParkingSession?tapToken=#{@config["tap_token"]}&plate=#{entry["plate"]}&time=3&discount=#{@config["discount"]}&discountCodeID=#{@config["discount_code_id"]}&fee=#{@config["fee"]}")
+    uri = URI.parse("https://hotspotparking.com/tapPoster/startParkingSession?tapToken=#{@config["tap_token"]}&plate=#{entry["plate"]}&time=#{PARKING_HOURS}&discount=#{DISCOUNT}&discountCodeID=#{@config["discount_code_id"]}&fee=#{FEE}")
     response = send_get_request(uri)
 
     if response.is_a?(Net::HTTPRedirection)

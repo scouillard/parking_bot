@@ -48,10 +48,6 @@ A list of quoted `"YYYY-MM-DD HH:MM"` times, in **Eastern time**. Every plate is
 
 Dates already past when the bot starts are skipped, never run late. With the daily sync on, you don't edit this file: see [Team schedule sync](#team-schedule-sync).
 
-### `config/parking.yml` (tracked)
-
-`discount` and `fee` are sent to the parking site as is with every registration. Change them only if the site's parameters change.
-
 ## Checking on it
 
 ```bash
@@ -91,7 +87,7 @@ The `parking_bot-sync.timer` runs it every day at 06:00 Eastern, early enough th
 
 ## Starting, stopping and restarting the bot
 
-The bot reads `.env` and the `config/` files only when it starts, so **after editing any of them by hand, restart it**. On the server:
+The bot reads `.env`, `config/plates.yml` and `config/dates.yml` only when it starts, so **after editing any of them by hand, restart it**. On the server:
 
 ```bash
 systemctl restart parking_bot          # after a manual change: reload the config
