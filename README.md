@@ -27,7 +27,12 @@ PARKING_MINUTES_BEFORE=30      # optional, default 30
 
 ### Where the parking values come from
 
-- **Tap token** (`PARKING_TAP_TOKEN`): the last part of the link the parking poster's NFC tag or QR code opens. It can change between seasons, so check the poster if registrations start failing.
+- **Tap token** (`PARKING_TAP_TOKEN`): the last part of the link the parking poster's NFC tag or QR code opens. It can change between seasons, so check the poster if registrations start failing, then set it:
+
+  ```bash
+  bin/token NEWTOKEN    # check the new poster exists, save the token, re-check the discount code, restart the bot
+  bin/token             # check that the saved token's poster still loads
+  ```
 - **Discount code** (`PARKING_DISCOUNT_CODE`): the league hands one out each season. The parking form works with the code's numeric ID, so `bin/discount` finds it for you:
 
   ```bash
@@ -115,7 +120,7 @@ tail -f parking_bot.log                # watch the bot's output (Ctrl-C to quit)
 tail log/sync.log                      # recent syncs
 ```
 
-From a laptop, run them through SSH, e.g. `ssh root@your-server 'systemctl restart parking_bot'`. `bin/dates`, `bin/plates` and `bin/discount` already restart the bot themselves.
+From a laptop, run them through SSH, e.g. `ssh root@your-server 'systemctl restart parking_bot'`. `bin/dates`, `bin/plates`, `bin/discount` and `bin/token` already restart the bot themselves.
 
 ## Running from a laptop
 
@@ -126,6 +131,7 @@ bin/remote status
 bin/remote dates new "28.10.2026 20:00" "04.11.2026 19:30"
 bin/remote plates remove ABC123
 bin/remote discount ABCD26
+bin/remote token NEWTOKEN
 ```
 
 Tell it the server's SSH login once, in the gitignored `.remote` file:

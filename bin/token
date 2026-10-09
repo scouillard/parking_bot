@@ -1,0 +1,55 @@
+#!/usr/bin/env ruby
+# Set or check the parking poster's tap token (the end of the link the
+# poster's NFC tag or QR code opens).
+#
+#   bin/token              show the token in .env, and check its poster page loads
+#   bin/token NEWTOKEN     check the new poster page, save the token to .env, restart the bot
+#
+# Each poster has its own discount codes, so a new token also re-checks the
+# discount code in .env and updates its ID if it differs there.
+
+$stdout.sync = true
+
+require_relative "../lib/cli"
+require_relative "../lib/discount"
+
+token = Env["PARKING_TAP_TOKEN"]
+code = Env["PARKING_DISCOUNT_CODE"]
+id = Env["PARKING_DISCOUNT_CODE_ID"]
+
+if ARGV.empty?
+  puts "Tap token: #{token || "(not set)"}"
+  CLI.fail! "Set it with: bin/token <tap token>" unless token
+
+  begin
+    Discount.codes_on_page(token)
+  rescue => e
+    CLI.fail! "#{e.message}: registrations will fail. Check the poster and run bin/token <tap token>."
+  end
+  CLI.ok "The poster page for #{token} loads."
+else
+  new_token = ARGV[0].strip
+  if new_token == token
+    CLI.ok "#{new_token} is already set."
+    exit
+  end
+
+  begin
+    codes = Discount.codes_on_page(new_token)
+  rescue => e
+    CLI.fail! "#{e.message}. Nothing changed."
+  end
+
+  updates = { "PARKING_TAP_TOKEN" => new_token }
+  new_id, = codes.find { |_, value| value.casecmp?(code) } if code
+  if code && new_id.nil?
+    puts "\e[33m#{code} isn't on this poster: get the new code and run bin/discount <code> next.\e[0m"
+  elsif new_id && new_id != id
+    updates["PARKING_DISCOUNT_CODE_ID"] = new_id
+    puts "#{code} has ID #{new_id} on this poster (was #{id || "none"})."
+  end
+
+  Env.write(updates)
+  CLI.ok "Saved tap token #{new_token}#{" (was #{token})" if token}."
+  CLI.restart_bot
+end

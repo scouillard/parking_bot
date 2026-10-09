@@ -5,6 +5,7 @@
 #   bin/remote dates new "28.10.2026 20:00"
 #   bin/remote plates remove ABC123
 #   bin/remote discount ABCD26
+#   bin/remote token NEWTOKEN
 #
 # The server's SSH login is the one line in .remote (gitignored), e.g.
 # `root@your-server`, or PARKING_BOT_SSH. PARKING_BOT_DIR is the bot's folder
@@ -12,7 +13,7 @@
 
 require 'shellwords'
 
-COMMANDS = %w[status dates plates discount].freeze
+COMMANDS = %w[status dates plates discount token].freeze
 REMOTE_PATH = File.expand_path("../.remote", __dir__)
 
 host = ENV["PARKING_BOT_SSH"] || (File.read(REMOTE_PATH).strip if File.exist?(REMOTE_PATH))
